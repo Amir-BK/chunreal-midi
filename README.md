@@ -1,3 +1,133 @@
+https://github.com/user-attachments/assets/b7e4a947-1625-454a-85de-81b71b2ddf46
+
+Support and Feedback (for this fork)
+https://discord.gg/EWFKWTz3
+
+Status:
+
+https://github.com/user-attachments/assets/88edb1d8-1f97-4d69-8c2e-0e19875bf209
+
+ChucK Processors can now be applied as Source and Submix effect in preset chains.  
+
+https://github.com/user-attachments/assets/accddb23-fffd-4d21-80f7-6d6ad3640467
+
+Real time parameter getters and setters within metasounds - 
+
+https://github.com/user-attachments/assets/780c46c0-8e04-432e-936f-ac7ac1afeca2
+
+Execute and Listen to Chuck events from BP or metasounds -
+
+https://github.com/user-attachments/assets/d0448a87-2391-456c-b007-1e897b20202f
+
+
+
+# Purpose of fork -
+This fork encapsulates the chunreal repo as a plugin and makes some changes to the way the ChucK classes interact with Unreal.
+
+The UChuckProcessor is a UObject that can be created as an asset in the editor where ChucK code can be input (with a work in progress syntax highlighter), this object has an audio object proxy and a registered meta sound data type and can be passed directly to the new Chuck Midi Renderer metasound node, the ChucK is compiled when the object proxy is created and thus should be able to play once assigned to the metasound node.
+
+This repo is a work in progress and some aspects are still not working really well and might require redesign.
+
+The end result should be reusable chuck assets that can be used inside metasounds with no BP setup and without needing to trigger compilation on the audio thread, making it simple to use ChucK components as instruments or effects in metasounds or in unDAW: https://github.com/Amir-BK/unDAW
+
+
+
+## New workflow!
+
+I split the Chuck asset into two asset types, one is UChuckCode which represents a block of chuck code, either as a proxy to a file on disk (automatically created via the editor module) or just a text block, this asset can spawn a transient UChuckInstantiation object which is compiled upon its creation, the UChuckInstantiation actually owns the ChucK vm pointer and is used to render audio, there are BP methods that compile a UChuckCode to a UChuckInstantiation as well as a metasound node that does the same thing, thus allowing the user to create the chuck instance either fully inside metasounds or in BP/CPP, the chuck instance can then be manipulated via set/get parameter calls and will automatically recompile when the code in the UChuckCode object it was created from is updated.
+
+As well as the metasound nodes a UChuckSynth component and  ChuckSourceEffect and ChuckSubmixEffect classes are provided that can play chucks and manipulate them. 
+
+### Automatic monitoring of chuck source files
+The ChunrealEditor module monitors the working directory (inside the plugin folder) for .ck files and will automatically create chuck processor assets for these sources, changes to the source files are tracked and will trigger recompilation of chuck vms using these proxies, this is still a work in progress but there are many advantages to keeping the chucks as source files outside unreal, primarily being able to add them to source control and easily editing them from text editors outside unreal.
+
+At the moment (a matter of days if not hours) it is the 'Chuck Project Editor' that monitors the directory rather than the module itself, the plan is not to have any dependencies on Editor Only functionality so that these chuck sources can also potentially be exposed and modified in packaged games at runtime.
+
+This system also allows keeping the .ck files as source files outside unreal, for more easily working with revision control, right now the Chuck working directory is set to a directory inside the plugin folder, it can be changed in code, eventually I'll expose it in the project settings. 
+
+### pseudo-includes and unreal discovery
+
+As before ChucK 1.5.4 the only way to import files was using the machine.add command inside chuck I created a rudimentary framework to include chuck files and discover them in unreal, to make the chuck compiler ignore these directives they are marked in comments in the .ck file, as the plugin is still not updated to the new chuck version and as the new @import directive is not fully equivalent to the old machine.add for now these psuedo-includes are still used.
+
+```
+//UCHUCK(); -- Marks the chuck file for discovery in unreal
+//UINSTRUMENT(); -- marks the file as an instrument, right now this doesn't make much of a difference but might help with categorization and search within unreal
+//UINCLUDE("ABK-HmxMidi/HmxMidi.ck"); -- an example of an include directive that executes 'machine add' before the the main chuck file is executed.
+
+```
+
+### Receiving harmonix midi streams in chuck instruments 
+
+The HmxMidi.ck is a simple chuck class that exposes three global int arrays and some methods for interactions with the harmonix midi stream similar to the standard MidiIn object, it needs to be included as a UINCLUDE in the chuck file, afterwards it can be used like this in order to trigger notes in the:
+
+```
+//UINCLUDE("ABK-HmxMidi/HmxMidi.ck");
+
+global HmxMidiIn HarmonixMidi;
+MidiMsg msg;
+
+while( true )
+{
+    HarmonixMidi => now;
+
+    while(HarmonixMidi.recv(msg))
+    {
+       if(HarmonixMidi.IsStdNoteOn(msg))
+       {
+        //NoteOn(msg.data2, msg.data3);
+        //Do note on stuff 
+       }
+       else if(HarmonixMidi.IsStdNoteOff(msg))
+        {
+        //NoteOff(msg.data2);
+        //Do note off stuff 
+        }
+    }
+
+}
+
+```
+
+The polyphonic instrument framework uses Jack Atherton's TimbreLibrary classes as a framework and several of his instruments are included. 
+
+### Chugins
+Chugins should be added to the appropriate folder in the working directory, I included the compiled chugins for win64 but for other platforms they needed to be added, some of the instruments use GVerb so they might not work on Macos unless you add the mac chugins to the build.cs file for the chunreal module. 
+
+
+### Manual creation (to be redesigned - Section oudated)
+
+Instead of assigning the code via blueprints there's a new 'Chuck Processor' asset that can be created via the content browser - 
+![image](https://github.com/user-attachments/assets/27a6adf3-393b-4b7d-89fb-42ea7423ed2d)
+
+ChucK code can be added to this asset: 
+![image](https://github.com/user-attachments/assets/fe5e23cb-bd60-43b1-bf35-8ff2229b6858)
+
+Once this asset has been created and saved it can be used in a Metasound using the new Chuck Midi Renderer Node, despite its name this node doesn't _have_ to be used with Midi, although at the moment it is not being assigned a ChucK global id and thus can only receive new params via midi, this will be fixed soon.
+![image](https://github.com/user-attachments/assets/b0fbaca1-fe4a-43dd-b1bf-847059910656)
+
+https://github.com/user-attachments/assets/0d10b089-70f9-415d-a0bf-332c5cbbcfcc
+
+Currently the midi renderer is not polyphonic, working on that, the midi renderer node executes the 'noteEvent' and 'noteFreq' params on the chuck instance whenever it reads a note from the harmonix stream, you can see how to set up a simple instrument in the example midi renderer chuck processor provided in the project.
+
+With these changes it is possible create re-usable chuck processor assets and use them in metasounds (as midi instruments or effects) without needing to interact with the metasound from blueprints.
+
+All previously existing Chunreal nodes and methods still work.
+
+The changes also make it possible to use Chunk instruments and effects easily with unDAW and the metasound builder system - check out the unDAW repo - https://github.com/Amir-BK/unDAW
+
+https://github.com/user-attachments/assets/588dbf3c-8bdb-4e63-aa8b-cb0f1601bfd2
+
+## Loading samples and files from disk
+The 'working directory' is currently set to "chunreal/WorkingDirectory" but when you try to load a sample with a relative unqualified path it will still search for it in the engine binary folder, you can make chucK look for samples in the working dir with the following syntax:
+
+```
+me.dir() + "kick_01.wav" => kick.read;
+```
+
+the working directory path can be changed in code, it is assigned to the ChucK when it is instantiated (so in the midi renderer node code), it can be exposed as a config variable and assigned per project, I'll eventually get to that, for now the WorkingDirectory inside the plugin seems usable.
+
+
+
 # Chunreal
 ## ChucK - Strongly-timed Music Programming Language - in Unreal Engine 5
 **_Chunreal_** is a plugin for [Unreal Engine 5](https://www.unrealengine.com/)  that allows users to compile [ChucK](https://github.com/ccrma/chuck) code at runtime. Multiple ChuckMain nodes can be chained in a MetaSound graph using stereo input & output to perform modular synthesis style digital signal processing. 
@@ -11,12 +141,7 @@ https://github.com/ccrma/chunreal/wiki
 
 ## Template Project
 
-This git repository hosts a template Unreal Engine 5.3 project that includes example scenes, Blueprints, MetaSound sources, and materials. Clone or fork the repository and generate Visual Studio project files. 
-If this is your first time compiling a Unreal Engine project, set up your IDE by following these tutorials:
-
-https://docs.unrealengine.com/5.3/en-US/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine/
-
-https://docs.unrealengine.com/5.3/en-US/how-to-generate-unreal-engine-project-files-for-your-ide/
+This repo contains all the content from the original Chunreal repository only encapsulated inside the plugin package, all the example content can be found inside the plugin's content folder, there's also a midi file to test the new node with.
 
 ### Try Example Scenes!
 Try opening the following example levels and playing in the editor viewport!
