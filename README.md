@@ -1,26 +1,3 @@
-https://github.com/user-attachments/assets/b7e4a947-1625-454a-85de-81b71b2ddf46
-
-Support and Feedback (for this fork)
-https://discord.gg/EWFKWTz3
-
-Status:
-
-https://github.com/user-attachments/assets/88edb1d8-1f97-4d69-8c2e-0e19875bf209
-
-ChucK Processors can now be applied as Source and Submix effect in preset chains.  
-
-https://github.com/user-attachments/assets/accddb23-fffd-4d21-80f7-6d6ad3640467
-
-Real time parameter getters and setters within metasounds - 
-
-https://github.com/user-attachments/assets/780c46c0-8e04-432e-936f-ac7ac1afeca2
-
-Execute and Listen to Chuck events from BP or metasounds -
-
-https://github.com/user-attachments/assets/d0448a87-2391-456c-b007-1e897b20202f
-
-
-
 # Purpose of fork -
 This fork encapsulates the chunreal repo as a plugin and makes some changes to the way the ChucK classes interact with Unreal.
 
