@@ -2,10 +2,10 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "Chunreal",
+	"FriendlyName": "Chunreal-Midi",
 	"Description": "ChucK - Strongly-timed Music Programming Language - in Unreal Engine",
 	"Category": "Audio",
-	"CreatedBy": "Eito Murakami & Ge Wang (Stanford Univeristy | CCRMA)",
+	"CreatedBy": "Eito Murakami & Ge Wang (Stanford Univeristy | CCRMA) || Forked & modified by Amir Ben-Kiki",
 	"CreatedByURL": "",
 	"DocsURL": "",
 	"MarketplaceURL": "",
@@ -17,17 +17,17 @@
 	"Installed": false,
 	"Modules": [
 		{
-		"Name" : "ChunrealEditor",
-		"Type" : "Editor"
+			"Name": "ChunrealEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		},
-
 		{
 			"Name": "Chunreal",
 			"Type": "Runtime",
 			"LoadingPhase": "EarliestPossible",
 			"PlatformAllowList": [
 				"Win64",
-        "Mac"
+				"Mac"
 			]
 		}
 	],
