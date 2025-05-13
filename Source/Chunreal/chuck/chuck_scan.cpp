@@ -1248,6 +1248,7 @@ t_CKBOOL type_engine_scan1_exp_postfix( Chuck_Env * env, a_Exp_Postfix postfix )
             return FALSE;
     }
 
+    return TRUE;
 }
 
 
@@ -2481,6 +2482,7 @@ t_CKBOOL type_engine_scan2_exp_postfix( Chuck_Env * env, a_Exp_Postfix postfix )
             return FALSE;
     }
 
+    return TRUE;
 }
 
 

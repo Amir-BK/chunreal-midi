@@ -42,6 +42,7 @@
 #include "chuck_symbol.h"
 #include "chuck_vm.h"
 #include "ugen_xxx.h"
+#include "ulib_doc.h" // for CKDoc::shouldSkip()
 #include "util_string.h"
 
 #include <limits.h>
@@ -68,7 +69,6 @@ t_CKBOOL type_engine_check_break( Chuck_Env * env, a_Stmt_Break br );
 t_CKBOOL type_engine_check_continue( Chuck_Env * env, a_Stmt_Continue cont );
 t_CKBOOL type_engine_check_return( Chuck_Env * env, a_Stmt_Return stmt );
 t_CKBOOL type_engine_check_switch( Chuck_Env * env, a_Stmt_Switch stmt );
-t_CKBOOL type_engine_enact_doc( Chuck_Env * env, a_Stmt_Doc doc );
 t_CKTYPE type_engine_check_exp( Chuck_Env * env, a_Exp exp );
 t_CKTYPE type_engine_check_exp_binary( Chuck_Env * env, a_Exp_Binary binary );
 t_CKTYPE type_engine_check_op( Chuck_Env * env, ae_Operator op, a_Exp lhs, a_Exp rhs, a_Exp_Binary binary );
@@ -100,6 +100,11 @@ t_CKBOOL type_engine_check_cast_valid( Chuck_Env * env, t_CKTYPE to, t_CKTYPE fr
 t_CKBOOL type_engine_check_code_segment( Chuck_Env * env, a_Stmt_Code stmt, t_CKBOOL push = TRUE );
 t_CKBOOL type_engine_check_func_def( Chuck_Env * env, a_Func_Def func_def );
 t_CKBOOL type_engine_check_class_def( Chuck_Env * env, a_Class_Def class_def );
+t_CKBOOL type_engine_remember_doc( Chuck_Env * env, a_Stmt_Doc doc );
+t_CKBOOL type_engine_check_stmt_list_for_doc_only( Chuck_Env * env, a_Stmt_List list );
+void type_engine_set_doc( Chuck_Env * env, Chuck_Func * func_def );
+void type_engine_set_doc( Chuck_Env * env, Chuck_Type * class_def );
+void type_engine_set_doc( Chuck_Env * env, Chuck_Value * value );
 
 // helpers
 void type_engine_init_op_overload_builtin( Chuck_Env * env );
@@ -1000,7 +1005,14 @@ t_CKBOOL type_engine_check_context( Chuck_Env * env,
         {
         case ae_section_stmt:
             // if only classes, then skip
-            if( how_much == te_do_import_only ) break;
+            if( how_much == te_do_import_only )
+            {
+                // pick up any @doc statements... the latest is assumed to pertain to an upcoming class | 1.5.4.5 (ge) added
+                // this ensures that @doc (which comes *before* the class def) works for imported class definitions
+                ret = type_engine_check_stmt_list_for_doc_only( env, prog->section->stmt_list );
+                // bypass the rest
+                break;
+            }
             // check the statements
             ret = type_engine_check_stmt_list( env, prog->section->stmt_list );
             break;
@@ -1148,7 +1160,7 @@ t_CKBOOL type_engine_unload_context( Chuck_Env * env )
 
 //-----------------------------------------------------------------------------
 // name: type_engine_check_stmt_list()
-// desc: ...
+// desc: type check a statement list
 //-----------------------------------------------------------------------------
 t_CKBOOL type_engine_check_stmt_list( Chuck_Env * env, a_Stmt_List list )
 {
@@ -1164,6 +1176,45 @@ t_CKBOOL type_engine_check_stmt_list( Chuck_Env * env, a_Stmt_List list )
     }
 
     return TRUE;
+}
+
+
+
+
+//-----------------------------------------------------------------------------
+// name: type_engine_check_stmt_list_for_doc_only() | 1.5.4.5 (ge) added
+// desc: type check a statement list, but only paying attention to @doc statements
+//-----------------------------------------------------------------------------
+t_CKBOOL type_engine_check_stmt_list_for_doc_only( Chuck_Env * env, a_Stmt_List list )
+{
+    // return type
+    t_CKBOOL ret = TRUE;
+
+    // type check the stmt_list
+    while( list && ret )
+    {
+        // check (stmt could be NULL)
+        if( list->stmt )
+        {
+            // the type of stmt
+            switch( list->stmt->s_type )
+            {
+                case ae_stmt_doc: // 1.5.4.5 (ge) added
+                    ret = type_engine_remember_doc( env, &list->stmt->stmt_doc );
+                    // actually, allow doc errors here, for now, including consecutive @doc
+                    if( !ret ) ret = TRUE; // lol
+                    break;
+
+                default:
+                    // 's all good
+                    break;
+            }
+        }
+        // advance to the next statement
+        list = list->next;
+    }
+
+    return ret;
 }
 
 
@@ -1244,7 +1295,7 @@ t_CKBOOL type_engine_check_stmt( Chuck_Env * env, a_Stmt stmt )
             break;
 
         case ae_stmt_doc: // 1.5.4.4 (ge) added
-            ret = type_engine_enact_doc( env, &stmt->stmt_doc );
+            ret = type_engine_remember_doc( env, &stmt->stmt_doc );
             break;
 
         case ae_stmt_if:
@@ -1838,30 +1889,83 @@ t_CKBOOL type_engine_check_return( Chuck_Env * env, a_Stmt_Return stmt )
 
 
 //-----------------------------------------------------------------------------
-// name: type_engine_enact_doc()
-// desc: take action for @doc statement
+// name: type_engine_remember_doc()
+// desc: remember @doc statement for upcoming target | 1.5.4.5 (ge) added
 //-----------------------------------------------------------------------------
-t_CKBOOL type_engine_enact_doc( Chuck_Env * env, a_Stmt_Doc doc )
+t_CKBOOL type_engine_remember_doc( Chuck_Env * env, a_Stmt_Doc doc )
 {
-    // check if we are in a function
-    if( env->func )
-    {
-        // set the documentation string from first
-        env->func->doc = doc->list ? doc->list->desc : "";
-    }
-    else if( env->class_def )
-    {
-        // set the documentation string from first
-        env->class_def->doc = doc->list ? doc->list->desc : "";
-    }
-    else
+    // get the current context
+    Chuck_Context * context = env->context;
+    // no context?
+    if( !context )
     {
         // error
-        EM_error2( doc->where, "@doc statements used outside class and function definitions");
+        EM_error2( doc->where, "(internal error) @doc encountered NULL file context" );
         return FALSE;
     }
 
+    // check if we already have a pending @doc
+    if( context->stmt_doc )
+    {
+        // error
+        EM_error2( doc->where, "consecutive @doc detected; was expecting a class, function, or variable declaratoin" );
+        return FALSE;
+    }
+
+    // remember
+    context->stmt_doc = doc;
+
+    // done
     return TRUE;
+}
+
+
+
+
+//-----------------------------------------------------------------------------
+// name: type_engine_set_doc()
+// desc: take action for @doc statement
+//-----------------------------------------------------------------------------
+void type_engine_set_doc( Chuck_Env * env, Chuck_Func * func_def )
+{
+    // check if we have an outstanding doc stmt
+    if( !env->context || !env->context->stmt_doc ) return;
+    // get the doc
+    a_Stmt_Doc doc = env->context->stmt_doc;
+    // reset the remembered @doc
+    env->context->stmt_doc = NULL;
+    // set the documentation string from first
+    func_def->doc = doc->list ? doc->list->desc : "";
+}
+//-----------------------------------------------------------------------------
+// name: type_engine_set_doc()
+// desc: take action for @doc statement
+//-----------------------------------------------------------------------------
+void type_engine_set_doc( Chuck_Env * env, Chuck_Type * class_def )
+{
+    // check if we have an outstanding doc stmt
+    if( !env->context || !env->context->stmt_doc ) return;
+    // get the doc
+    a_Stmt_Doc doc = env->context->stmt_doc;
+    // reset the remembered @doc
+    env->context->stmt_doc = NULL;
+    // set the documentation string from first
+    class_def->doc = doc->list ? doc->list->desc : "";
+}
+//-----------------------------------------------------------------------------
+// name: type_engine_set_doc()
+// desc: take action for @doc statement
+//-----------------------------------------------------------------------------
+void type_engine_set_doc( Chuck_Env * env, Chuck_Value * value )
+{
+    // check if we have an outstanding doc stmt
+    if( !env->context || !env->context->stmt_doc ) return;
+    // get the doc
+    a_Stmt_Doc doc = env->context->stmt_doc;
+    // reset the remembered @doc
+    env->context->stmt_doc = NULL;
+    // set the documentation string from first
+    value->doc = doc->list ? doc->list->desc : "";
 }
 
 
@@ -4425,6 +4529,8 @@ t_CKTYPE type_engine_check_exp_decl_part2( Chuck_Env * env, a_Exp_Decl decl )
         value = var_decl->value;
         // make sure
         assert( value != NULL );
+        // set ckdoc, if present | 1.5.4.5 (ge) added
+        type_engine_set_doc( env, value );
         // get the type
         type = value->type;
         // make sure
@@ -5382,7 +5488,7 @@ t_CKTYPE type_engine_check_exp_array( Chuck_Env * env, a_Exp_Array array )
 
 //-----------------------------------------------------------------------------
 // name: type_engine_check_class_def()
-// desc: ...
+// desc: type check a class definition
 //-----------------------------------------------------------------------------
 t_CKBOOL type_engine_check_class_def( Chuck_Env * env, a_Class_Def class_def )
 {
@@ -5406,6 +5512,9 @@ t_CKBOOL type_engine_check_class_def( Chuck_Env * env, a_Class_Def class_def )
         // done
         return FALSE;
     }
+
+    // set ckdoc, if present | 1.5.4.5 (ge)
+    type_engine_set_doc( env, the_class );
 
     // NB the following should be done AFTER the parent is completely defined
     // --
@@ -5745,6 +5854,9 @@ t_CKBOOL type_engine_check_func_def( Chuck_Env * env, a_Func_Def f )
         arg_list = arg_list->next;
     }
 
+    // set ckdoc, if present | 1.5.4.5 (ge)
+    type_engine_set_doc( env, theFunc );
+
     // type check the code
     assert( f->code == NULL || f->code->s_type == ae_stmt_code );
     if( f->code && !type_engine_check_code_segment( env, &f->code->stmt_code, FALSE ) )
@@ -5835,12 +5947,12 @@ Chuck_Namespace::~Chuck_Namespace()
 // name: add_type()
 // desc: add type to name space
 //-----------------------------------------------------------------------------
-void Chuck_Namespace::add_type( const std::string & xid, Chuck_Type * _type )
+void Chuck_Namespace::add_type( const std::string & xid, Chuck_Type * type )
 {
     // log it
-    EM_log( CK_LOG_DEBUG, "namespace '%s' adding type '%s'->'%s'", this->name.c_str(), xid.c_str(), _type->name().c_str() );
+    EM_log( CK_LOG_DEBUG, "namespace '%s' adding type '%s'->'%s'", this->name.c_str(), xid.c_str(), type->name().c_str() );
     // add it
-    this->type.add( xid, _type );
+    this->type.add( xid, type );
 }
 
 
@@ -5850,12 +5962,12 @@ void Chuck_Namespace::add_type( const std::string & xid, Chuck_Type * _type )
 // name: add_value()
 // desc: add value to name space
 //-----------------------------------------------------------------------------
-void Chuck_Namespace::add_value( const std::string & xid, Chuck_Value * _value )
+void Chuck_Namespace::add_value( const std::string & xid, Chuck_Value * value )
 {
     // log it
-    EM_log( CK_LOG_DEBUG, "namespace '%s' adding value '%s'->'%s'", this->name.c_str(), xid.c_str(), _value->name.c_str() );
+    EM_log( CK_LOG_DEBUG, "namespace '%s' adding value '%s'->'%s'", this->name.c_str(), xid.c_str(), value->name.c_str() );
     // add it
-    this->value.add( xid, _value );
+    this->value.add( xid, value );
 }
 
 
@@ -5865,12 +5977,12 @@ void Chuck_Namespace::add_value( const std::string & xid, Chuck_Value * _value )
 // name: add_func()
 // desc: add type to name space
 //-----------------------------------------------------------------------------
-void Chuck_Namespace::add_func( const std::string & xid, Chuck_Func * _func )
+void Chuck_Namespace::add_func( const std::string & xid, Chuck_Func * func )
 {
     // log it
-    EM_log( CK_LOG_DEBUG, "namespace '%s' adding func '%s'->'%s'", this->name.c_str(), xid.c_str(), _func->base_name.c_str() );
+    EM_log( CK_LOG_DEBUG, "namespace '%s' adding func '%s'->'%s'", this->name.c_str(), xid.c_str(), func->base_name.c_str() );
     // add it
-    this->func.add( xid, _func );
+    this->func.add( xid, func );
 }
 
 
@@ -6678,9 +6790,15 @@ Chuck_Type * type_engine_find_type( Chuck_Namespace * npsc, S_Symbol xid )
 // name: type_engine_find_type()
 // desc: find global type
 //-----------------------------------------------------------------------------
-Chuck_Type * type_engine_find_type( Chuck_Env * env, const std::string & name )
+Chuck_Type * type_engine_find_type( Chuck_Env * env, const std::string & name,
+                                    t_CKBOOL expandToUser )
 {
-    return type_engine_find_type( env->global(), insert_symbol(name.c_str()) );
+    // look for type in global namespace
+    Chuck_Type * t = type_engine_find_type( env->global(), insert_symbol(name.c_str()) );
+    // if not found and expand search to user
+    if( !t ) t = type_engine_find_type( env->user(), insert_symbol(name.c_str()) );
+    // return what we got
+    return t;
 }
 
 
@@ -9363,6 +9481,8 @@ t_CKBOOL type_engine_is_base_exp_static( Chuck_Env * env, a_Exp_Dot_Member exp )
             return FALSE;
             break;
     }
+
+    return FALSE;
 }
 
 
@@ -10762,6 +10882,9 @@ void Chuck_Type::apropos_funcs( std::string & output,
             Chuck_Func * theFunc = *f;
             // check for NULL
             if( theFunc == NULL ) continue;
+            // check if should skip | 1.5.4.5 (ge)
+            if( CKDoc::shouldSkip(theFunc) ) continue;
+
             // see if name appeared before
             if( func_names.count(theFunc->name) )
             {
@@ -10952,6 +11075,8 @@ void Chuck_Type::apropos_vars( std::string & output, const std::string & PREFIX,
             if( value->name[0] == '@' ) continue;
             // see if value is a function
             if( value->func_ref ) continue;
+            // check if should skip | 1.5.4.5 (ge)
+            if( CKDoc::shouldSkip(value) ) continue;
 
             // check for static declaration
             if( value->is_static ) {
