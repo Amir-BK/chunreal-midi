@@ -12,6 +12,7 @@
 #include "Framework/Text/SlatePasswordRun.h"
 #include "Internationalization/BreakIterator.h"
 #include "Trace/SlateMemoryTags.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 TSharedRef< FChunrealSlateTextLayout > FChunrealSlateTextLayout::Create(SWidget* InOwner, FTextBlockStyle InDefaultTextStyle)
 {
@@ -329,7 +330,11 @@ int32 FChunrealSlateTextLayout::OnPaintHighlights( const FPaintArgs& Args, const
 		const TSharedPtr< ISlateLineHighlighter > LineHighlighter = StaticCastSharedPtr< ISlateLineHighlighter >( Highlight.Highlighter );
 		if (LineHighlighter.IsValid())
 		{
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)	// changes in API for 5.6
 			CurrentLayerId = LineHighlighter->OnPaint( Args, LineView, Highlight.Offset, Highlight.Width, InDefaultTextStyle, AllottedGeometry, CullingRect, OutDrawElements, CurrentLayerId, InWidgetStyle, bParentEnabled );
+#else
+			CurrentLayerId = LineHighlighter->OnPaint(Args, LineView, Highlight.OffsetX, Highlight.Width, InDefaultTextStyle, AllottedGeometry, CullingRect, OutDrawElements, CurrentLayerId, InWidgetStyle, bParentEnabled);
+#endif
 		}
 	}
 
