@@ -60,167 +60,30 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ChucK")
 	FLinearColor BackgroundColor = ChuckCodeEditorWidget::DefaultBackgroundColor;
 
-	void NativeConstruct() override
-	{
-		if (ChuckCode)
-		{
-			CodeEditor->SetText(FText::FromString(ChuckCode->Code));
-		}
+	void NativeConstruct() override;
 
-	}
-
-	virtual TSharedRef<SWidget> RebuildWidget() override
-	{
-	
-
-		auto CompileIcon = FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Recompile");
-
-		if (CompileButton)
-		{
-			//compile button icon
-			
-			CompileButton->SetStyle(
-				FButtonStyle().SetNormal(*CompileIcon.GetIcon()));
-		}
-
-		auto Hierarchy = 	SNew(SBorder)
-			.BorderImage(FAppStyle::Get().GetBrush("ToolPanel.GroupBorder"))
-			.BorderBackgroundColor(BackgroundColor)
-			[
-				SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.FillHeight(0.95f)
-						[
-						SAssignNew(CodeEditorBox, SBox)
-							//.MinDesiredWidth(Size.X)
-							//.MinDesiredHeight(Size.Y)
-							[
-								SAssignNew(CodeEditor, SBkCodeEditableText)
-									.Text(GetCode())
-
-									.Marshaller(FChucKSyntaxHighlighterMarshaller::Create())
-							]
-					]
-					+ SVerticalBox::Slot()
-					.FillHeight(0.05f)
-					[
-						SNew(SBox)
-							.MaxDesiredHeight(15.0f)
-							.HeightOverride(15.0f)
-							[
-								SNew(SHorizontalBox)
-							
-									//spacer
-									+ SHorizontalBox::Slot()
-									.FillWidth(0.8f)
-									[
-										SNew(SSpacer)
-									]
-									+ SHorizontalBox::Slot()
-									.FillWidth(0.2f)
-									[
-										SNew(SButton)
-											.ButtonStyle(FAppStyle::Get(), "FlatButton.Success")
-											.Text(FText::FromString("Compile"))
-											.OnClicked_Lambda([this]() -> FReply
-												{
-													OnChuckCodeChanged.Broadcast();
-													return FReply::Handled();
-												})
-									]
-									+ SHorizontalBox::Slot()
-									.FillWidth(0.2f)
-									[
-										SNew(SButton)
-											.Text(FText::FromString("X"))
-											.OnClicked_Lambda([this]() -> FReply
-												{
-													OnChuckWidgetUnfocus.Broadcast();
-													return FReply::Handled();
-												})
-									]
-
-							]
-						
-					]
-			];
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 
-		return Hierarchy;
-	}
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
-
-	virtual void ReleaseSlateResources(bool bReleaseChildren) override
-	{
-		Super::ReleaseSlateResources(bReleaseChildren);
-
-		CodeEditor.Reset();
-	}
-
-	void SetBoxSize(FIntPoint InSize)
-	{
-		if (CodeEditorBox.IsValid())
-		{
-			//CodeEditorBox->SetWidthOverride(InSize.X);
-			//CodeEditorBox->SetHeightOverride(InSize.Y);
-		}
-
-	};
+	void SetBoxSize(FIntPoint InSize);;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "ChucK")
-	FText GetCode() const
-	{
-		if (ChuckCode)
-		{
-			return FText::FromString(ChuckCode->Code);
-		}
-		
-		return INVTEXT("// sad but rue");
-	}
+	FText GetCode() const;
 
 	UFUNCTION(BlueprintCallable, Category = "ChucK")
-	void SetCode(UChuckCode* InNewCodeObject)
-	{
-		ChuckCode = InNewCodeObject;
-		if (CodeEditor.IsValid())
-		{
-			if (InNewCodeObject)
-			{
-			CodeEditor->SetText(FText::FromString(InNewCodeObject->Code));
-			}
-			else {
-				CodeEditor->SetText(FText::FromString(ChuckCodeEditorWidget::DefaultCode));
-			}
-		}
-
-		OnChuckCodeChanged.Broadcast();
-
-	//CodeEditor->SetText(InCode);
-	}
+	void SetCode(UChuckCode* InNewCodeObject);
 
 	//Use this to create a transient code object from an existing code file, useful to let the user modify chucks without affecting the original object
 	UFUNCTION(BlueprintCallable, Category = "ChucK")
-	void CopyCodeFromObject(UChuckCode* InCodeObject)
-	{
-		if (InCodeObject)
-		{
-			ChuckCode = NewObject<UChuckCode>(this);
-			SetCode(InCodeObject);
-		}
-	}
+	void CopyCodeFromObject(UChuckCode* InCodeObject);
 
 
 	//TODO: remove?
 	UFUNCTION(BlueprintCallable, Category = "ChucK")
-	UChuckCode* SpawnNewChuckCodeObjectFromWidget()
-	{
-		FString Code = GetCode().ToString();
-		UChuckCode* ChuckInstance = NewObject<UChuckCode>();
-		ChuckInstance->Code = Code;
-		//ChuckInstance->ChuckGuid = FGuid();
-		return ChuckInstance;
-	}
+	UChuckCode* SpawnNewChuckCodeObjectFromWidget();
 	
 	UPROPERTY(BlueprintReadWrite, Category = "ChucK", meta = (BindWidget))
 	UButton* CompileButton;
