@@ -1,3 +1,9 @@
+ChucK code editing widget -
+
+
+https://github.com/user-attachments/assets/59458f50-bfa7-4cf2-b6f2-dc345a927d40
+
+
 
 https://www.youtube.com/watch?v=xoehdKIyygc
 
