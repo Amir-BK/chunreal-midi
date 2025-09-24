@@ -29,6 +29,7 @@
 #include <vector>
 #include "Chunreal.h"
 #include "ChuckInstance.h"
+#include "MetasoundFacade.h"
 //#include "de.h"
 
 //#include "SfizzSynthNode.h"
@@ -414,7 +415,9 @@ namespace ChunrealMetasounds::ChuckCompiler
 		virtual ~FChuckMidiRenderer() override = default;
 	};
 
-	METASOUND_REGISTER_NODE(FChuckMidiRenderer)
+	using FChunrealMetasoundMidiCompilerNode = TNodeFacade<ChunrealMetasoundMidiOperator>;
+
+	METASOUND_REGISTER_NODE(FChunrealMetasoundMidiCompilerNode)
 }
 
 #undef LOCTEXT_NAMESPACE // "HarmonixMetaSound"

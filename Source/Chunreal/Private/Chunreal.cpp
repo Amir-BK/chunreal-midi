@@ -12,12 +12,15 @@
 #include "Misc/CoreDelegates.h"
 #include "MetasoundFrontendRegistries.h"
 #include "MetasoundDataTypeRegistrationMacro.h"
+#include "MetasoundDataReferenceMacro.h"
+#include "MetasoundFrontendDataTypeTraits.h"
 #include "Interfaces/IPluginManager.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "HAL/FileManagerGeneric.h"
 #include "Engine/AssetManager.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Misc/EngineVersionComparison.h"
 #include "ChuckInstance.h"
 
 #define LOCTEXT_NAMESPACE "FChunrealModule"
@@ -29,6 +32,24 @@ void FChunrealModule::StartupModule()
 {
 	const auto PlatformAudioSettings = FAudioPlatformSettings::GetPlatformSettings(FPlatformProperties::GetRuntimeSettingsClassName());
 	const auto PlatformSampleRate = PlatformAudioSettings.SampleRate;
+	
+	// Register MetaSound custom data types BEFORE registering pending nodes
+
+    Metasound::Frontend::FModuleInfo ModuleInfo{};
+#if WITH_EDITORONLY_DATA
+    ModuleInfo.PluginName = TEXT("Chunreal");
+    ModuleInfo.ModuleName = TEXT("Chunreal");
+#endif
+	Metasound::Frontend::RegisterDataType<Metasound::FChuckProcessor, Metasound::ELiteralType::UObjectProxy, UChuckCode>(ModuleInfo);
+	Metasound::Frontend::RegisterDataType<Metasound::FChuckInstance, Metasound::ELiteralType::UObjectProxy, UChuckInstantiation>(ModuleInfo);
+
+#if UE_VERSION_NEWER_THAN(5, 6, 0)	
+    METASOUND_REGISTER_ITEMS_IN_MODULE
+#else
+    FMetasoundFrontendRegistryContainer::Get()->RegisterPendingNodes();
+#endif
+	// Now finalize registration of any nodes declared via METASOUND_REGISTER_NODE
+	//FMetasoundFrontendRegistryContainer::Get()->RegisterPendingNodes();
 	
 	//Create Chuck
     chuckParent = new ChucK();
@@ -75,12 +96,6 @@ void FChunrealModule::StartupModule()
     //Store as "ChuckParent"
     StoreChuckRef(chuckParent, "ChuckParent");
 
-    //Register MetaSound Nodes
-    FMetasoundFrontendRegistryContainer::Get()->RegisterPendingNodes();
-
-	Metasound::RegisterDataTypeWithFrontend<Metasound::FChuckProcessor, Metasound::ELiteralType::UObjectProxy, UChuckCode>();
-	Metasound::RegisterDataTypeWithFrontend<Metasound::FChuckInstance, Metasound::ELiteralType::UObjectProxy, UChuckInstantiation>();
-
 
 	FCoreDelegates::OnPostEngineInit.AddRaw(this, &FChunrealModule::ScanWorkingDirectoryForChucks);
 	//ScanWorkingDirectoryForChucks();
@@ -94,6 +109,10 @@ void FChunrealModule::ShutdownModule()
     //Delete ChucK parent
     delete chuckParent;
     chuckParent = nullptr;  
+
+#if UE_VERSION_NEWER_THAN(5, 6, 0)	
+    METASOUND_UNREGISTER_ITEMS_IN_MODULE
+#endif
 
 }
 

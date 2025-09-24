@@ -31,6 +31,7 @@
 #include <vector>
 #include "Chunreal.h"
 #include "ChuckInstance.h"
+#include "MetasoundFacade.h"
 //#include "MidiStreamTrackIsolatorNode.h"
 
 //#include "SfizzSynthNode.h"
@@ -101,8 +102,8 @@ namespace ChunrealMetasounds::ChuckMidiRenderer
 					Info.ClassName = GetClassName();
 					Info.MajorVersion = 1;
 					Info.MinorVersion = 0;
-					Info.DisplayName = INVTEXT("Chuck Instance Renderer Node");
-					Info.Description = INVTEXT("This node takes a compiled chuck instances and produces audio from it, can also pass a midi stream as events into chuck");
+					Info.DisplayName = METASOUND_LOCTEXT("ChuckInstanceRendererName", "Chuck Instance Renderer Node");
+					Info.Description = METASOUND_LOCTEXT("ChuckInstanceRendererDescription", "This node takes a compiled chuck instances and produces audio from it, can also pass a midi stream as events into chuck");
 					Info.Author = Info.Author = TEXT("Amir Ben-Kiki");
 					Info.PromptIfMissing = PluginNodeMissingPrompt;
 					Info.DefaultInterface = GetVertexInterface();
@@ -570,7 +571,10 @@ namespace ChunrealMetasounds::ChuckMidiRenderer
 		virtual ~FChuckMidiRenderer() override = default;
 	};
 
-	METASOUND_REGISTER_NODE(FChuckMidiRenderer)
+	using FChuckMidiRendererNode = TNodeFacade<FChunrealMetasoundMidiOperator>;
+
+	METASOUND_REGISTER_NODE(FChuckMidiRendererNode)
 }
 
 #undef LOCTEXT_NAMESPACE // "HarmonixMetaSound"
+

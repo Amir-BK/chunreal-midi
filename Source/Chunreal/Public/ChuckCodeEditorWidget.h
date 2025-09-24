@@ -89,7 +89,7 @@ public:
 	UButton* CompileButton;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChucK", meta = (ExposeOnSpawn = true, MultiLine = true))
-	FString InitialCode = TEXT("<<<Hello World>>>;");
+	FString InitialCode = ChuckCodeEditorWidget::DefaultCode;
 
 
 };

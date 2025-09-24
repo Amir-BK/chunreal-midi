@@ -95,8 +95,8 @@ namespace ChunrealMetasounds::ChuckEventNodes
 					Info.ClassName = GetEventToTriggerNodeName();
 					Info.MajorVersion = GetCurrentMajorVersion();
 					Info.MinorVersion = GetCurrentMinorVersion();
-					Info.DisplayName = LOCTEXT("ChuckEventToTriggerDisplayName", "Chuck Event to Trigger");
-					Info.Description = LOCTEXT("ChuckEventToTriggerDescription", "Translates a chuck event to a trigger.");
+					Info.DisplayName = METASOUND_LOCTEXT("ChuckEventToTriggerDisplayName", "Chuck Event to Trigger");
+					Info.Description = METASOUND_LOCTEXT("ChuckEventToTriggerDescription", "Translates a chuck event to a trigger.");
 					Info.DefaultInterface = GetDefaultInterface();
 					Info.Author = TEXT("Amir Ben-Kiki");
 					Info.PromptIfMissing = PluginNodeMissingPrompt;
@@ -367,8 +367,10 @@ namespace ChunrealMetasounds::ChuckEventNodes
 		virtual ~FChuckEventToTriggerNode() = default;
 
 	};
+
+	using FChuckEventToTriggerNodeNew = TNodeFacade<FChuckEventToTriggerOperator>;
 	
-	METASOUND_REGISTER_NODE(FChuckEventToTriggerNode);
+	METASOUND_REGISTER_NODE(FChuckEventToTriggerNodeNew)
 
 	class FTriggerToChuckEventNode final : public FNodeFacade
 	{
@@ -376,11 +378,16 @@ namespace ChunrealMetasounds::ChuckEventNodes
 		explicit FTriggerToChuckEventNode(const FNodeInitData& InInitData)
 			: FNodeFacade(InInitData.InstanceName, InInitData.InstanceID, TFacadeOperatorClass<FTriggerToChuckEventOperator>())
 		{
+		
 		}
 
 		virtual ~FTriggerToChuckEventNode() = default;
 	};
 
-	METASOUND_REGISTER_NODE(FTriggerToChuckEventNode);
+	using FTriggerToChuckEventNodeNew = TNodeFacade<FTriggerToChuckEventOperator>;
 
-};
+	METASOUND_REGISTER_NODE(FTriggerToChuckEventNodeNew)
+
+}
+
+#undef LOCTEXT_NAMESPACE

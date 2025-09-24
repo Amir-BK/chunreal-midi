@@ -14,7 +14,7 @@
 #include "MetasoundParamHelper.h"
 #include "ChuckInstance.h"
 #include <MetasoundFrontendRegistryContainer.h>
-#include <Chunreal/chuck/chuck_oo.h>
+
 using namespace Metasound;
 
 #define LOCTEXT_NAMESPACE "ChunrealMetasound_ChunrealValueNode"
