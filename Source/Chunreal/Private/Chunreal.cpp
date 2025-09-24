@@ -43,7 +43,7 @@ void FChunrealModule::StartupModule()
 	Metasound::Frontend::RegisterDataType<Metasound::FChuckProcessor, Metasound::ELiteralType::UObjectProxy, UChuckCode>(ModuleInfo);
 	Metasound::Frontend::RegisterDataType<Metasound::FChuckInstance, Metasound::ELiteralType::UObjectProxy, UChuckInstantiation>(ModuleInfo);
 
-#if UE_VERSION_NEWER_THAN(5, 6, 0)	
+#if !(UE_VERSION_OLDER_THAN(5, 7, 0))	
     METASOUND_REGISTER_ITEMS_IN_MODULE
 #else
     FMetasoundFrontendRegistryContainer::Get()->RegisterPendingNodes();
@@ -110,7 +110,7 @@ void FChunrealModule::ShutdownModule()
     delete chuckParent;
     chuckParent = nullptr;  
 
-#if UE_VERSION_NEWER_THAN(5, 6, 0)	
+#if !(UE_VERSION_OLDER_THAN(5, 7, 0))	
     METASOUND_UNREGISTER_ITEMS_IN_MODULE
 #endif
 
