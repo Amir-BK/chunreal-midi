@@ -3100,7 +3100,8 @@ t_CKBOOL emit_engine_emit_op( Chuck_Emitter * emit, ae_Operator op, a_Exp lhs, a
         break;
 
         //---------------------------- (error) --------------------------------
-    default: break;
+    default: 
+        //break;
         EM_error2( binary->where,
             "(emit): internal error: unhandled op '%s' %s '%s'",
             t_left->c_name(), op2str(op), t_right->c_name() );

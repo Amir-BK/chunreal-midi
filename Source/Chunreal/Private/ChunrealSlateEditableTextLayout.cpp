@@ -3543,8 +3543,8 @@ void FChunrealSlateEditableTextLayout::Tick(const FGeometry& AllottedGeometry, c
 		}
 	}
 
-	const float FontMaxCharHeight = FTextEditHelper::GetFontHeight(TextStyle.Font);
-	const float CaretWidth = FTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
+	const float FontMaxCharHeight = FChunrealTextEditHelper::GetFontHeight(TextStyle.Font);
+	const float CaretWidth = FChunrealTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
 
 	// If we're auto-wrapping, we need to hide the scrollbars until the first valid auto-wrap has been performed
 	// If we don't do this, then we can get some nasty layout shuffling as the scrollbars appear for one frame and then vanish again
@@ -3664,8 +3664,8 @@ int32 FChunrealSlateEditableTextLayout::OnPaint(const FPaintArgs& Args, const FG
 
 void FChunrealSlateEditableTextLayout::CacheDesiredSize(float LayoutScaleMultiplier)
 {
-	const float FontMaxCharHeight = FTextEditHelper::GetFontHeight(TextStyle.Font);
-	const float CaretWidth = FTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
+	const float FontMaxCharHeight = FChunrealTextEditHelper::GetFontHeight(TextStyle.Font);
+	const float CaretWidth = FChunrealTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
 
 	// Get the wrapping width and font to see if they have changed
 	float WrappingWidth = WrapTextAt.Get();
@@ -3697,8 +3697,8 @@ FVector2D FChunrealSlateEditableTextLayout::ComputeDesiredSize(float LayoutScale
 {
 	check(IsInGameThread());
 
-	const float FontMaxCharHeight = FTextEditHelper::GetFontHeight(TextStyle.Font);
-	const float CaretWidth = FTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
+	const float FontMaxCharHeight = FChunrealTextEditHelper::GetFontHeight(TextStyle.Font);
+	const float CaretWidth = FChunrealTextEditHelper::CalculateCaretWidth(FontMaxCharHeight);
 
 	const float WrappingWidth = WrapTextAt.Get();
 	float DesiredWidth = 0.0f;

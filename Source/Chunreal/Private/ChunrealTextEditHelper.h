@@ -27,7 +27,7 @@ namespace EditableTextDefs
 /**
  * Static helper functions
  */
-class FTextEditHelper
+class FChunrealTextEditHelper
 {
 public:
 	/**

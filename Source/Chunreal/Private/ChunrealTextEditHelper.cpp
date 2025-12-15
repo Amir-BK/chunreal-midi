@@ -4,13 +4,13 @@
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 
-float FTextEditHelper::GetFontHeight(const FSlateFontInfo& FontInfo)
+float FChunrealTextEditHelper::GetFontHeight(const FSlateFontInfo& FontInfo)
 {
 	const TSharedRef< FSlateFontMeasure > FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
 	return FontMeasure->GetMaxCharacterHeight(FontInfo);
 }
 
-float FTextEditHelper::CalculateCaretWidth(const float FontMaxCharHeight)
+float FChunrealTextEditHelper::CalculateCaretWidth(const float FontMaxCharHeight)
 {
 	// We adjust the width of the caret to avoid it becoming too wide on smaller or larger fonts and overlapping the characters it's next to.
 	// We clamp the lower limit to 1 to avoid it being invisible, and the upper limit to 2 to avoid tall fonts having very wide carets.
